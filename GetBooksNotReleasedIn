@@ -1,0 +1,33 @@
+namespace BookShop
+{
+    using BookShop.Models.Enums;
+    using Data;
+    using Initializer;
+    using Microsoft.EntityFrameworkCore;
+    using System.Text;
+
+    public class StartUp
+    {
+        public static void Main()
+        {
+            using var db = new BookShopContext();
+            int year = int.Parse(Console.ReadLine());
+
+            Console.WriteLine(GetBooksNotReleasedIn(db, year));
+        }
+
+        public static string GetBooksNotReleasedIn(BookShopContext context, int year)
+        {
+            var notReleasedBooks = context.Books
+                .AsNoTracking() //detaching from change tracker
+        
+                //property ReleaseDate needs to be checked because it is Required and its type is nullable 
+                .Where(b => b.ReleaseDate.HasValue && b.ReleaseDate.Value.Year != year)
+                .OrderBy(b => b.BookId);
+        
+            //using "String.Join" and "Environment.NewLine" to gather all info in one string
+            //avoiding looping through collection
+            return String.Join(Environment.NewLine, notReleasedBooks.Select(b => b.Title));
+        }
+    }
+}
