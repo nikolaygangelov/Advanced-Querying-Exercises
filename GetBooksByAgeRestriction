@@ -1,0 +1,129 @@
+namespace BookShop
+{
+    using BookShop.Models.Enums;
+    using Data;
+    using Initializer;
+    using Microsoft.EntityFrameworkCore;
+    using System.Text;
+
+    public class StartUp
+    {
+        public static void Main()
+        {
+            using var db = new BookShopContext();
+            //DbInitializer.ResetDatabase(db);
+
+            //int year = int.Parse(Console.ReadLine());
+            //string input = Console.ReadLine();
+
+            Console.WriteLine(GetTotalProfitByCategory(db));
+        }
+
+        public static string GetBooksByAgeRestriction(BookShopContext context, string command)
+        {
+            //using StringBuilder to gather all info in one string
+            StringBuilder sb = new StringBuilder();
+
+            //turning needed info about books into a collection using anonymous object
+            //using less data
+            var restrictedBooks = context.Books
+                .Select(b => new
+                {
+                    BookTitle = b.Title,
+                    AgeRestriction = b.AgeRestriction,
+                })
+                .AsNoTracking()  //detaching from change tracker
+                .ToList()
+                .Where(b => b.AgeRestriction.ToString().ToLower() == command)  //ignoring case sensitive
+                .OrderBy(b => b.BookTitle);
+
+            foreach (var title in restrictedBooks)
+            {
+                //using AppendLine so that every printing to be on separate line
+                sb.AppendLine(title.BookTitle);
+            }
+
+            //using Trim() to get rid of white spaces
+            return sb.ToString().Trim();
+        }
+
+        public static string GetGoldenBooks(BookShopContext context)
+        {
+            //using StringBuilder to gather all info in one string
+            StringBuilder sb = new StringBuilder();
+
+            //turning needed info about books into a collection using anonymous object
+            //using less data
+            var goldenBooks = context.Books
+                .Select(b => new
+                {
+                    BookId = b.BookId,
+                    BookTitle = b.Title,
+                    BookCopies = b.Copies,
+                    EditionsType = b.EditionType
+                })
+                .AsNoTracking() //detaching from change tracker
+                .ToList()
+                .Where(b => b.EditionsType == EditionType.Gold && b.BookCopies < 5000)
+                .OrderBy(b => b.BookId);
+
+            foreach (var title in goldenBooks)
+            {
+                //using AppendLine so that every printing to be on separate line
+                sb.AppendLine(title.BookTitle);
+            }
+
+            //using Trim() to get rid of white spaces
+            return sb.ToString().Trim();
+        }
+
+        public static string GetBooksNotReleasedIn(BookShopContext context, int year)
+        {
+            var notReleasedBooks = context.Books
+                .AsNoTracking() //detaching from change tracker
+
+                //property ReleaseDate needs to be checked because it is Required and its type is nullable 
+                .Where(b => b.ReleaseDate.HasValue && b.ReleaseDate.Value.Year != year)
+                .OrderBy(b => b.BookId);
+
+            //using "String.Join" and "Environment.NewLine" to gather all info in one string
+            //avoiding looping through collection
+            return String.Join(Environment.NewLine, notReleasedBooks.Select(b => b.Title));
+        }
+
+        public static string GetBooksByCategory(BookShopContext context, string input)
+        {
+            string[] genres = input.Split(' ', StringSplitOptions.RemoveEmptyEntries)  //removing all white spaces
+                .Select(g => g.ToLower())  //ignoring case sensitive
+                .ToArray();
+
+            var booksByCategory = context.Books
+                .AsNoTracking()  //detaching from change tracker
+                .Where(b => b.BookCategories.Any(bc => genres.Contains(bc.Category.Name.ToLower())))
+                .OrderBy(b => b.Title);
+
+            //using "String.Join" and "Environment.NewLine" to gather all info in one string
+            //avoiding looping through collection
+            return String.Join(Environment.NewLine, booksByCategory.Select(b => b.Title));
+        }
+
+        public static string GetTotalProfitByCategory(BookShopContext context)
+        {
+            //turning needed info about books into a collection using anonymous object
+            //using less data
+            var profitByCategory = context.Categories
+                .AsNoTracking() //detaching from change tracker
+                .Select(c => new
+                {
+                    CategoryName = c.Name,
+                    TotalProfit = c.CategoryBooks.Sum(cb => cb.Book.Copies * cb.Book.Price)
+                })
+                .OrderByDescending(b => b.TotalProfit)
+                .ThenBy(b => b.CategoryName);
+
+            //using "String.Join" and "Environment.NewLine" to gather all info in one string
+            //avoiding looping through collection
+            return String.Join(Environment.NewLine, profitByCategory.Select(pf => $"{pf.CategoryName} {pf.TotalProfit:f2}"));
+        }
+    }
+}
