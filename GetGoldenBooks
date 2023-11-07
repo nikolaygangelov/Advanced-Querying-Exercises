@@ -1,0 +1,48 @@
+namespace BookShop
+{
+    using BookShop.Models.Enums;
+    using Data;
+    using Initializer;
+    using Microsoft.EntityFrameworkCore;
+    using System.Text;
+
+    public class StartUp
+    {
+        public static void Main()
+        {
+            using var db = new BookShopContext();
+
+            Console.WriteLine(GetGoldenBooks(db));
+        }
+
+         public static string GetGoldenBooks(BookShopContext context)
+         {
+             //using StringBuilder to gather all info in one string
+             StringBuilder sb = new StringBuilder();
+        
+             //turning needed info about books into a collection using anonymous object
+             //using less data
+             var goldenBooks = context.Books
+                 .Select(b => new
+                 {
+                     BookId = b.BookId,
+                     BookTitle = b.Title,
+                     BookCopies = b.Copies,
+                     EditionsType = b.EditionType
+                 })
+                 .AsNoTracking() //detaching from change tracker
+                 .ToList()
+                 .Where(b => b.EditionsType == EditionType.Gold && b.BookCopies < 5000)
+                 .OrderBy(b => b.BookId);
+        
+             foreach (var title in goldenBooks)
+             {
+                 //using AppendLine so that every printing to be on separate line
+                 sb.AppendLine(title.BookTitle);
+             }
+        
+             //using Trim() to get rid of white spaces
+             return sb.ToString().Trim();
+         }
+    }
+}
