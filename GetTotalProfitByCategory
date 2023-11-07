@@ -1,0 +1,37 @@
+namespace BookShop
+{
+    using BookShop.Models.Enums;
+    using Data;
+    using Initializer;
+    using Microsoft.EntityFrameworkCore;
+    using System.Text;
+
+    public class StartUp
+    {
+        public static void Main()
+        {
+            using var db = new BookShopContext();
+
+            Console.WriteLine(GetTotalProfitByCategory(db));
+        }
+
+        public static string GetTotalProfitByCategory(BookShopContext context)
+        {
+            //turning needed info about books into a collection using anonymous object
+            //using less data
+            var profitByCategory = context.Categories
+                .AsNoTracking() //detaching from change tracker
+                .Select(c => new
+                {
+                    CategoryName = c.Name,
+                    TotalProfit = c.CategoryBooks.Sum(cb => cb.Book.Copies * cb.Book.Price)
+                })
+                .OrderByDescending(b => b.TotalProfit)
+                .ThenBy(b => b.CategoryName);
+        
+            //using "String.Join" and "Environment.NewLine" to gather all info in one string
+            //avoiding looping through collection
+            return String.Join(Environment.NewLine, profitByCategory.Select(pf => $"{pf.CategoryName} {pf.TotalProfit:f2}"));
+        }
+    }
+}
